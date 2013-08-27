@@ -61,47 +61,52 @@
 # the file naming conventions at:
 # https://github.com/IOOSProfilingGliders/Real-Time-File-Format/wiki/Real-Time-File-Description#file-naming-convention
 
-import numpy as np;
-from datetime import datetime, timedelta;
-from netCDF4 import default_fillvals as NC_FILL_VALUES;
-from netCDF4 import num2date, date2num;
-from netCDF4 import Dataset;
-import time as t;
+import numpy as np
+from datetime import datetime, timedelta
+from netCDF4 import default_fillvals as NC_FILL_VALUES
+from netCDF4 import num2date, date2num
+from netCDF4 import Dataset
+import time as t
 
 # NetCDF4 compression level (1 seems to be optimal, in terms of effort and
 # result)
-COMP_LEVEL = 1;
+COMP_LEVEL = 1
 
 def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
                profile_iddata, depthdata, latdata, londata, pressuredata, 
                conductivitydata, densitydata, salinitydata, temperaturedata, udata, vdata, 
-               lat_uv, lon_uv, 
+               lat_uvdata, lon_uvdata, time_qcdata=None, u_qcdata=None, v_qcdata=None,
                depth_qcdata=None, lat_qcdata=None, lon_qcdata=None, pressure_qcdata=None,
                conductivity_qcdata=None, density_qcdata=None, salinity_qcdata=None,
-               temperature_qcdata=None):
+               temperature_qcdata=None, **kwargs):
     # Name of output file (leave v.0.0 pending release of accepted spec):
     # kerfoot@marine.rutgers.edu
     nc = Dataset(filename,
                  'w',
                  format='NETCDF4_CLASSIC')
 
+    now = t.ctime(t.time())
+
     # Required vars list
-    req_time_vars = [depthdata, latdata, londata, pressuredata, conducivitydata, densitydata, salinitydata, temperaturedata,]
-    req_uv_vars = [udata, vdata, lat_uv, lon_uv]
-    req_traj_vars = req_time_vars + req_uv_vars
+    req_time_vars = [depthdata, latdata, londata, pressuredata, conductivitydata, densitydata, salinitydata, temperaturedata,]
+    req_uv_vars = [udata, vdata, lat_uvdata, lon_uvdata]
+    #req_traj_vars = req_time_vars + req_uv_vars
     quality_vars = [depth_qcdata, lat_qcdata, lon_qcdata, pressure_qcdata, conductivity_qcdata, density_qcdata, salinity_qcdata, temperature_qcdata]
     for var in quality_vars:
         if var != None:
             req_time_vars.append(var)
-            req_traj_vars.append(var)
+            #req_traj_vars.append(var)
 
     # Dimensions
     time_size = len(timedata)
     trajectory_size = len(trajectorydata)
     time_uv_size = len(time_uvdata)
-    [assert time_size == var.shape[0] for var in req_vars]
-    [assert trajectory_size == var.shape[1] for var in req_vars]
-    [assert time_uv_size == var.shape[0] for var in req_uv_vars]
+    for var in req_time_vars:
+        assert time_size == var.shape[0]
+    #for var in req_traj_vars:
+    #    assert trajectory_size == var.shape[1]
+    for var in req_uv_vars:
+        assert time_uv_size == var.shape[0] 
     time = nc.createDimension('time', time_size)
     trajectory = nc.createDimension('trajectory', trajectory_size)
     time_uv = nc.createDimension('time_uv', time_uv_size)
@@ -120,47 +125,49 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
       'creator_email' : 'kerfoot@marine.rutgers.edu',
       'creator_name' : 'John Kerfoot',
       'creator_url' : 'http://marine.rutgers.edu/cool/auvs',
-      'date_created' : '2013-05-08 14:45 UTC',
-      'date_issued' : '2013-05-08 14:45 UTC',
-      'date_modified' : '2013-05-08 14:45 UTC',
+      'date_created' : now,
+      'date_issued' : now,
+      'date_modified' : now,
       'featureType' : 'trajectory',
       'format_version' : 'IOOS_Glider_NetCDF_Trajectory_Template_v0.0', # NOTE: Changed from file_version for conformance with GROOM.
-      'geospatial_lat_max' : -15.88833,
-      'geospatial_lat_min' : -15.9445416666667,
+      'geospatial_lat_max' : latdata.max(),
+      'geospatial_lat_min' : latdata.min(),
       'geospatial_lat_resolution' : 'point',
       'geospatial_lat_units' : 'degrees_north',
-      'geospatial_lon_max' : 1.49547333333333,
-      'geospatial_lon_min' : 1.394655,
+      'geospatial_lon_max' : londata.max(),
+      'geospatial_lon_min' : londata.min(),
       'geospatial_lon_resolution' : 'point',
       'geospatial_lon_units' : 'degrees_east',
-      'geospatial_vertical_max' : 987.26,
-      'geospatial_vertical_min' : 0.,
+      'geospatial_vertical_max' : depthdata.max(),
+      'geospatial_vertical_min' : depthdata.min(),
       'geospatial_vertical_positive' : 'down',  
       'geospatial_vertical_resolution' : 'point',
       'geospatial_vertical_units' : 'meters',
-      'history' : 'Created on ' + t.ctime(t.time()),
-      'id' : 'ru29-20130507T211956',
+      'history' : 'Created on ' + now,
+      'id' : '',
       'institution' : 'Institute of Marine & Coastal Sciences, Rutgers University',
       'keywords' : 'Oceans > Ocean Pressure > Water Pressure, Oceans > Ocean Temperature > Water Temperature, Oceans > Salinity/Density > Conductivity, Oceans > Salinity/Density > Density, Oceans > Salinity/Density > Salinity',
       'keywords_vocabulary' : 'GCMD Science Keywords',
       'license' : 'This data may be redistributed and used without restriction.',
       'metadata_link' : '',
       'naming_authority' : 'edu.rutgers.marine',
-      'processing_level' : 'Dataset taken from glider native file format',
+      'processing_level' : 'Written to file from ioos_glider.writer_0_0()',
       'project' : 'Deployment not project based',
       'publisher_email' : 'kerfoot@marine.rutgers.edu',
       'publisher_name' : 'John Kerfoot',
       'publisher_url' : 'http://marine.rutgers.edu/cool/auvs',
       'references' : '',
-      'sea_name' : 'South Atlantic Ocean',
+      'sea_name' : '',
       'standard_name_vocabulary' : 'CF-v25', # TODO: Or, represent using URL e.g. http://cf-pcmdi.llnl.gov/documents/cf-standard-names/standard-name-table/25/
       'source' : 'Observational data from a profiling glider', 
       'summary' : 'The Rutgers University Coastal Ocean Observation Lab has deployed autonomous underwater gliders around the world since 1990. Gliders are small, free-swimming, unmanned vehicles that use changes in buoyancy to move vertically and horizontally through the water column in a saw-tooth pattern. They are deployed for days to several months and gather detailed information about the physical, chemical and biological processes of the world\'s The Slocum glider was designed and oceans. built by Teledyne Webb Research Corporation, Falmouth, MA, USA.',
-      'time_coverage_end' : '2013-05-08 07:56 UTC',
+      'time_coverage_end' : timedata[0].strftime('%Y-%m-%d %H:%M UTC'),
       'time_coverage_resolution' : 'point',
-      'time_coverage_start' : '2013-05-07 21:19 UTC',
-      'title' : 'Slocum Glider Dataset',
+      'time_coverage_start' : timedata[-1].strftime('%Y-%m-%d %H:%M UTC'),
+      'title' : 'Glider Dataset',
     }
+    for key in kwargs.iterkeys():
+        global_attributes[key] = kwargs[key]
     # Dictionary of global file attributes.  Use a dictionary so that we can add the
     # attributes in alphabetical order (not necessary, but makes it easier to find
     # attributes that are in alphabetical order)
@@ -194,7 +201,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     }
     for k in sorted(atts.keys()):
         time.setncattr(k, atts[k])
-    time[:] = timedata
+    time[:] = date2num(timedata, units=atts['units'], calendar=atts['calendar'])
 
     # ----------------------------------------------------------------------------
     # TIME_QC
@@ -242,7 +249,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     };
     for k in sorted(atts.keys()):
         time_uv.setncattr(k, atts[k])
-    time_uv[:] = time_uvdata
+    time_uv[:] = date2num(time_uvdata, units=atts['units'], calendar=atts['calendar'])
     # TODO: See [issue 2](https://github.com/IOOSProfilingGliders/Real-Time-File-Format/issues/2). 
     # ----------------------------------------------------------------------------
 
