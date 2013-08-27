@@ -1066,3 +1066,22 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # ----------------------------------------------------------------------------
 
     nc.close()
+
+if __name__ == "__main__":
+    from flask import Flask
+    app = Flask(__name__)
+
+    @app.route("/")
+    def index():
+        response = \
+    '''
+    Here is what you do!!
+    '''
+        return response
+
+    @app.route("/geojson/<path:dap>")
+    def geojson(dap):
+        response = dap
+        return response
+
+    app.run()
