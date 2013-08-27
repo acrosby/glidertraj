@@ -1,6 +1,6 @@
 #GliderTraj
 
-This is a super simple module to write ocean glider trajectories in the IOOS glider format.
+This is a super simple module to write ocean glider trajectories in the IOOS glider format. The writer templates are based on http://github.com/IOOSProfilingGliders/Real-Time-File-Format .
 
 ## Convert ROMS drifter simulations
 
