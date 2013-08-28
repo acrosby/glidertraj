@@ -1088,7 +1088,7 @@ if __name__ == "__main__":
         with Dataset(dap) as nc:
             lon = nc.variables["lon"][:].flatten().data.astype(np.float64)
             lat = nc.variables["lat"][:].flatten().data.astype(np.float64)
-            coords = zip(lon[lon<1000], lat[lat<1000])
+            coords = zip(lon[lon<1000][:100], lat[lat<1000][:100])
             #coords = zip(np.ones((100,)), np.ones((100,)))
             n = gj.LineString( coords )
             s = getncattrs(nc)
@@ -1096,4 +1096,5 @@ if __name__ == "__main__":
             response = gj.dumps(f)
         return response
 
-    app.run()
+    #app.run()
+    app.run(host='0.0.0.0')
