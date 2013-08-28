@@ -1069,7 +1069,10 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
 
 if __name__ == "__main__":
     from flask import Flask
+    import geojson as gj
+    from getncattrs import __call__ as getncattrs
     app = Flask(__name__)
+    app.debug = True
 
     @app.route("/")
     def index():
@@ -1081,7 +1084,16 @@ if __name__ == "__main__":
 
     @app.route("/geojson/<path:dap>")
     def geojson(dap):
-        response = dap
+        response = "Problem"
+        with Dataset(dap) as nc:
+            lon = nc.variables["lon"][:].flatten().data.astype(np.float64)
+            lat = nc.variables["lat"][:].flatten().data.astype(np.float64)
+            coords = zip(lon[lon<1000], lat[lat<1000])
+            #coords = zip(np.ones((100,)), np.ones((100,)))
+            n = gj.LineString( coords )
+            s = getncattrs(nc)
+            f = gj.Feature(id=s.get("id", None), geometry=n, properties=s)
+            response = gj.dumps(f)
         return response
 
     app.run()
