@@ -72,6 +72,34 @@ import time as t
 # result)
 COMP_LEVEL = 1
 
+def romssim_read(filename):
+    with Dataset(filename) as nc:
+        vars = nc.variables
+        lon = vars["lon"][:]
+        lat = vars["lat"][:]
+        depth = vars["depth"][:]
+        dens = vars["rho"][:]
+        temp = vars["temp"][:]
+        salt = vars["salt"][:]
+        time = vars["ocean_time"][:]
+        datetime = num2date(time, units=vars["ocean_time"].units)
+    response = {"lon":lon, "lat":lat, "depth":depth,
+                "dens":dens, "temp":temp, "salt":salt,
+                "time":time, "datetime":datetime}
+    return response
+
+def romssim_write(filename, output, ver="0.0"):
+    processing_level = ""
+    source = ""
+    roms = romssim_read(filename)
+    if ver=="0.0":
+        dummy = np.ones_like(roms["lon"]) * np.nan
+        dummyuv = np.ones((1,roms["lon"].shape[1])) * np.nan
+        dummytimeuv = np.ndarray((1,), dtype=type(roms["datetime"][0]))
+        dummytimeuv[:] = roms["datetime"][0]
+        traj = np.arange(roms["lon"].shape[1])
+        writer_0_0(output, roms["datetime"], dummytimeuv, traj, dummy, dummy, roms["depth"], roms["lat"], roms["lon"], dummy, dummy, roms["dens"], roms["salt"], roms["temp"], dummyuv, dummyuv, dummyuv, dummyuv, processing_level=processing_level, source=source)
+
 def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
                profile_iddata, depthdata, latdata, londata, pressuredata, 
                conductivitydata, densitydata, salinitydata, temperaturedata, udata, vdata, 
@@ -110,6 +138,11 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     time = nc.createDimension('time', time_size)
     trajectory = nc.createDimension('trajectory', trajectory_size)
     time_uv = nc.createDimension('time_uv', time_uv_size)
+    dim_tuple = ('time',)
+    uv_tuple = ('time_uv',)
+    if len(trajectorydata) > 1:
+        dim_tuple = ('time', 'trajectory',)
+        uv_tuple = ('time_uv', 'trajectory',)
 
     # Global Attributes
     # 2013-07-22 kerfoot@marine.rutgers.edu: sync'd with github wiki global
@@ -180,6 +213,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     QC_FLAG_MEANINGS = "no_qc_performed good_data probably_good_data bad_data_that_are_potentially_correctable bad_data value_changed interpolated_value missing_value";
 
     # Variable Definitions
+
     # ----------------------------------------------------------------------------
     # TIME
     # time: no _Fill_Value since dimension
@@ -287,7 +321,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # fill_value based on the data type.
     segment_id = nc.createVariable('segment_id',
                                    'i2',
-                                   ('time',),
+                                   dim_tuple,
                                    zlib=True,
                                    complevel=COMP_LEVEL,
                                    fill_value=NC_FILL_VALUES['i2'])
@@ -311,7 +345,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # fill_value based on the data type.
     profile_id = nc.createVariable('profile_id',
                                    'i2',
-                                   ('time',),
+                                   dim_tuple,
                                    zlib=True,
                                    complevel=COMP_LEVEL,
                                    fill_value=NC_FILL_VALUES['i2'])
@@ -338,7 +372,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # fill_value based on the data type.
     depth = nc.createVariable('depth',
                               'f8',
-                              ('time',),
+                              dim_tuple,
                               zlib=True,
                               complevel=COMP_LEVEL,
                               fill_value=NC_FILL_VALUES['f8'])
@@ -373,7 +407,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # fill_value based on the data type.
     depth_qc = nc.createVariable('depth_qc',
                                  'i1',
-                                 ('time',),
+                                 dim_tuple,
                                  zlib=True,
                                  complevel=COMP_LEVEL,
                                  fill_value=NC_FILL_VALUES['i1'])
@@ -405,7 +439,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # fill_value based on the data type.
     lat = nc.createVariable('lat',
                             'f8',
-                            ('time',),
+                            dim_tuple,
                             zlib=True,
                             complevel=COMP_LEVEL,
                             fill_value=NC_FILL_VALUES['f8'])
@@ -440,7 +474,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # fill_value based on the data type.
     lat_qc = nc.createVariable('lat_qc',
                                'i1',
-                               ('time',),
+                               dim_tuple,
                                zlib=True,
                                complevel=COMP_LEVEL,
                                fill_value=NC_FILL_VALUES['i1'])
@@ -470,7 +504,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # fill_value based on the data type.
     lon = nc.createVariable('lon',
                             'f8',
-                            ('time',),
+                            dim_tuple,
                             zlib=True,
                             complevel=COMP_LEVEL,
                             fill_value=NC_FILL_VALUES['f8'])
@@ -505,7 +539,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # fill_value based on the data type.
     lon_qc = nc.createVariable('lon_qc',
                                'i1',
-                               ('time',),
+                               dim_tuple,
                                zlib=True,
                                complevel=COMP_LEVEL,
                                fill_value=NC_FILL_VALUES['i1'])
@@ -537,7 +571,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # GROOM specification.
     pressure = nc.createVariable('pressure',
                                  'f8',
-                                 ('time',),
+                                 dim_tuple,
                                  zlib=True,
                                  complevel=COMP_LEVEL,
                                  fill_value=NC_FILL_VALUES['f8'])
@@ -575,7 +609,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # fill_value based on the data type.
     pressure_qc = nc.createVariable('pressure_qc',
                                     'i1',
-                                    ('time',),
+                                    dim_tuple,
                                     zlib=True,
                                     complevel=COMP_LEVEL,
                                     fill_value=NC_FILL_VALUES['i1'])
@@ -604,7 +638,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # conductivity: 64 bit float
     conductivity = nc.createVariable('conductivity',
                                      'f8',
-                                     ('time',),
+                                     dim_tuple,
                                      zlib=True,
                                      complevel=COMP_LEVEL,
                                      fill_value=NC_FILL_VALUES['f8'])
@@ -639,7 +673,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # fill_value based on the data type.
     conductivity_qc = nc.createVariable('conductivity_qc',
                                         'i1',
-                                        ('time',),
+                                        dim_tuple,
                                         zlib=True,
                                         complevel=COMP_LEVEL,
                                         fill_value=NC_FILL_VALUES['i1'])
@@ -666,7 +700,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # density: 64 bit float
     density = nc.createVariable('density',
                                 'f8',
-                                ('time',),
+                                dim_tuple,
                                 zlib=True,
                                 complevel=COMP_LEVEL,
                                 fill_value=NC_FILL_VALUES['f8'])
@@ -698,7 +732,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # fill_value based on the data type.
     density_qc = nc.createVariable('density_qc',
                                    'i1',
-                                   ('time',),
+                                   dim_tuple,
                                    zlib=True,
                                    complevel=COMP_LEVEL,
                                    fill_value=NC_FILL_VALUES['i1'])
@@ -725,7 +759,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # salinity: 64 bit float
     salinity = nc.createVariable('salinity',
                                  'f8',
-                                 ('time',),
+                                 dim_tuple,
                                  zlib=True,
                                  complevel=COMP_LEVEL,
                                  fill_value=NC_FILL_VALUES['f8'])
@@ -757,7 +791,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # fill_value based on the data type.
     salinity_qc = nc.createVariable('salinity_qc',
                                     'i1',
-                                    ('time',),
+                                    dim_tuple,
                                     zlib=True,
                                     complevel=COMP_LEVEL,
                                     fill_value=NC_FILL_VALUES['i1'])
@@ -786,7 +820,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # temperature: 64 bit float
     temperature = nc.createVariable('temperature',
                                     'f8',
-                                    ('time',),
+                                    dim_tuple,
                                     zlib=True,
                                     complevel=COMP_LEVEL,
                                     fill_value=NC_FILL_VALUES['f8'])
@@ -821,7 +855,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # fill_value based on the data type.
     temperature_qc = nc.createVariable('temperature_qc',
                                        'i1',
-                                       ('time',),
+                                       dim_tuple,
                                        zlib=True,
                                        complevel=COMP_LEVEL,
                                        fill_value=NC_FILL_VALUES['i1'])
@@ -851,7 +885,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # fill_value based on the data type.
     lat_uv = nc.createVariable('lat_uv',
                                'f8',
-                               ('time_uv',),
+                               uv_tuple,
                                zlib=True,
                                complevel=COMP_LEVEL,
                                fill_value=NC_FILL_VALUES['f8'])
@@ -881,7 +915,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # fill_value based on the data type.
     lon_uv = nc.createVariable('lon_uv',
                                'f8',
-                               ('time_uv',),
+                               uv_tuple,
                                zlib=True,
                                complevel=COMP_LEVEL,
                                fill_value=NC_FILL_VALUES['f8'])
@@ -908,7 +942,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # u: 64 bit float
     u = nc.createVariable('u',
                           'f8',
-                          ('time_uv',),
+                          uv_tuple,
                           zlib=True,
                           complevel=COMP_LEVEL,
                           fill_value=NC_FILL_VALUES['f8'])
@@ -939,7 +973,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # fill_value based on the data type.
     u_qc = nc.createVariable('u_qc',
                              'i1',
-                             ('time_uv',),
+                             uv_tuple,
                              zlib=True,
                              complevel=COMP_LEVEL,
                              fill_value=NC_FILL_VALUES['i1'])
@@ -966,7 +1000,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # v: 64 bit float
     v = nc.createVariable('v',
                           'f8',
-                          ('time_uv',),
+                          uv_tuple,
                           zlib=True,
                           complevel=COMP_LEVEL,
                           fill_value=NC_FILL_VALUES['f8'])
@@ -997,7 +1031,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     # fill_value based on the data type.
     v_qc = nc.createVariable('v_qc',
                              'i1',
-                             ('time_uv',),
+                             uv_tuple,
                              zlib=True,
                              complevel=COMP_LEVEL,
                              fill_value=NC_FILL_VALUES['i1'])
@@ -1068,7 +1102,7 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
     nc.close()
 
 if __name__ == "__main__":
-    from flask import Flask
+    from flask import Flask, Response
     import geojson as gj
     from getncattrs import __call__ as getncattrs
     app = Flask(__name__)
@@ -1086,15 +1120,31 @@ if __name__ == "__main__":
     def geojson(dap):
         response = "Problem"
         with Dataset(dap) as nc:
-            lon = nc.variables["lon"][:].flatten().data.astype(np.float64)
-            lat = nc.variables["lat"][:].flatten().data.astype(np.float64)
-            coords = zip(lon[lon<1000][::100], lat[lat<1000][::100])
-            #coords = zip(np.ones((100,)), np.ones((100,)))
-            n = gj.LineString( coords )
-            s = getncattrs(nc)
-            f = gj.Feature(id=s.get("id", None), geometry=n, properties=s)
+            if nc.variables["lon"].shape[0] > 1000:
+                stride = 200
+            else:
+                stride = 1
+            if len(nc.variables["lon"].shape) == 2:
+                f = []
+                for i in xrange(nc.variables["lon"].shape[1]):
+                    lon = nc.variables["lon"][::stride,i].flatten().data.astype(np.float64)
+                    lat = nc.variables["lat"][::stride,i].flatten().data.astype(np.float64)
+                    coords = zip(lon[lon<1000], lat[lat<1000])
+                    #coords = zip(np.ones((100,)), np.ones((100,)))
+                    n = gj.LineString( coords )
+                    s = getncattrs(nc)
+                    f.append( gj.Feature(id=nc.variables["trajectory"][i], geometry=n, properties=s))
+                f = gj.FeatureCollection(f)
+            else:
+                lon = nc.variables["lon"][::stride].flatten().data.astype(np.float64)
+                lat = nc.variables["lat"][::stride].flatten().data.astype(np.float64)
+                coords = zip(lon[lon<1000], lat[lat<1000])
+                #coords = zip(np.ones((100,)), np.ones((100,)))
+                n = gj.LineString( coords )
+                s = getncattrs(nc)
+                f = gj.Feature(id=s.get("id", None), geometry=n, properties=s)
             response = gj.dumps(f)
-        return response
+        return Response(response, mimetype='application/json')
 
     #app.run()
     app.run(host='0.0.0.0')
