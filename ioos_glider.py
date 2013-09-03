@@ -1101,6 +1101,17 @@ def writer_0_0(filename, timedata, time_uvdata, trajectorydata, segment_iddata,
 
     nc.close()
 
+def get_time_coverage(nc, stride):
+    a, b, tname = None, None, None
+    if "ocean_time" in nc.variables:
+        tname = "ocean_time"
+    if "time" in nc.variables:
+        tname = "time"
+    if tname != None:
+        a = num2date(nc.variables[tname][::stride][0], units=nc.variables[tname].units).strftime('%Y-%m-%d %H:%M UTC')
+        b = num2date(nc.variables[tname][::stride][-1], units=nc.variables[tname].units).strftime('%Y-%m-%d %H:%M UTC')
+    return a, b
+
 if __name__ == "__main__":
     from flask import Flask, Response
     import geojson as gj
@@ -1133,7 +1144,12 @@ if __name__ == "__main__":
                     #coords = zip(np.ones((100,)), np.ones((100,)))
                     n = gj.LineString( coords )
                     s = getncattrs(nc)
-                    f.append( gj.Feature(id=nc.variables["trajectory"][i], geometry=n, properties=s))
+                    if (not "time_coverage_start" in s) or (not "time_coverage_end" in s):
+                        s["time_coverage_start"], s["time_coverage_end"] = get_time_coverage(nc, stride)
+                    if "trajectory" in nc.variables:
+                        f.append( gj.Feature(id=nc.variables["trajectory"][i], geometry=n, properties=s) )
+                    else:
+                        f.append( gj.Feature(id=i, geometry=n, properties=s) )
                 f = gj.FeatureCollection(f)
             else:
                 lon = nc.variables["lon"][::stride].flatten().data.astype(np.float64)
@@ -1142,6 +1158,8 @@ if __name__ == "__main__":
                 #coords = zip(np.ones((100,)), np.ones((100,)))
                 n = gj.LineString( coords )
                 s = getncattrs(nc)
+                if (not "time_coverage_start" in s) or (not "time_coverage_end" in s):
+                    s["time_coverage_start"], s["time_coverage_end"] = get_time_coverage(nc, stride)
                 f = gj.Feature(id=s.get("id", None), geometry=n, properties=s)
             response = gj.dumps(f)
         return Response(response, mimetype='application/json')
