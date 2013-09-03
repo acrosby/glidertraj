@@ -27,3 +27,12 @@ And to use it:
 For jsonp style callback wrapping:
 
 [http://localhost:5000/geojson/http://tds.gliders.ioos.us/thredds/dodsC/RU5MonthTime.ncml?callback=MyCallbackFunction](http://localhost:5000/geojson/http://tds.gliders.ioos.us/thredds/dodsC/RU5MonthTime.ncml?callback=MyCallbackFunction)
+
+## Requires:
+
+```bash
+pip install numpy
+pip install netCDF4
+pip install geojson
+pip install flask
+```
