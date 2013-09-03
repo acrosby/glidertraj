@@ -1112,6 +1112,13 @@ def get_time_coverage(nc, stride):
         b = num2date(nc.variables[tname][::stride][-1], units=nc.variables[tname].units).strftime('%Y-%m-%d %H:%M UTC')
     return a, b
 
+def get_stride(nc):
+    if nc.variables["lon"].shape[0] > 1000:
+        stride = 200
+    else:
+        stride = 1
+    return stride
+
 if __name__ == "__main__":
     from flask import Flask, Response
     import geojson as gj
@@ -1127,14 +1134,16 @@ if __name__ == "__main__":
     '''
         return response
 
+    @app.route("/geojson-line/<path:dap>")
+    def geojson_line(dap):
+        return geojson(dap)
+
     @app.route("/geojson/<path:dap>")
     def geojson(dap):
+        callback = request.args.get('callback', None)
         response = "Problem"
         with Dataset(dap) as nc:
-            if nc.variables["lon"].shape[0] > 1000:
-                stride = 200
-            else:
-                stride = 1
+            stride = get_stride(nc)
             if len(nc.variables["lon"].shape) == 2:
                 f = []
                 for i in xrange(nc.variables["lon"].shape[1]):
@@ -1162,6 +1171,8 @@ if __name__ == "__main__":
                     s["time_coverage_start"], s["time_coverage_end"] = get_time_coverage(nc, stride)
                 f = gj.Feature(id=s.get("id", None), geometry=n, properties=s)
             response = gj.dumps(f)
+            if callback != None:
+                response = callback + "(" response + ")"
         return Response(response, mimetype='application/json')
 
     #app.run()
