@@ -16,4 +16,8 @@ python ioos_glider.py
 
 And to use it:
 
-[http://localhost:5000/geojson/http://tds.gliders.ioos.us/thredds/dodsC/RU5MonthTime.ncml](http://localhost:5000/geojson/http://tds.gliders.ioos.us/thredds/dodsC/RU5MonthTime.ncm)
+[http://localhost:5000/geojson/http://tds.gliders.ioos.us/thredds/dodsC/RU5MonthTime.ncml](http://localhost:5000/geojson/http://tds.gliders.ioos.us/thredds/dodsC/RU5MonthTime.ncml)
+
+For jsonp style callback wrapping:
+
+[http://localhost:5000/geojson/http://tds.gliders.ioos.us/thredds/dodsC/RU5MonthTime.ncml?callback=MyCallbackFunction](http://localhost:5000/geojson/http://tds.gliders.ioos.us/thredds/dodsC/RU5MonthTime.ncml?callback=MyCallbackFunction)
