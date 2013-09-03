@@ -6,6 +6,12 @@ This is a super simple module to write ocean glider trajectories in the IOOS gli
 
 The module has some high-level functionality to read and convert ROMS simulated drifters to the IOOS glider netCDF format.
 
+```python
+from ioos_glider import romssim_write
+
+romssim_write(romssimfile, ioosglideroutput, ver="0.0")
+```
+
 ## geojson Web Service
 
 This Python module contains a small Flask app that will service the IOOS glider netCDF files as geojson. For a test run you can start the service like so:
