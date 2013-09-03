@@ -1120,7 +1120,7 @@ def get_stride(nc):
     return stride
 
 if __name__ == "__main__":
-    from flask import Flask, Response
+    from flask import Flask, Response, request
     import geojson as gj
     from getncattrs import __call__ as getncattrs
     app = Flask(__name__)
@@ -1172,7 +1172,7 @@ if __name__ == "__main__":
                 f = gj.Feature(id=s.get("id", None), geometry=n, properties=s)
             response = gj.dumps(f)
             if callback != None:
-                response = callback + "(" response + ")"
+                response = callback + "(" + response + ")"
         return Response(response, mimetype='application/json')
 
     #app.run()
