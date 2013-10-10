@@ -67,6 +67,11 @@ from netCDF4 import default_fillvals as NC_FILL_VALUES
 from netCDF4 import num2date, date2num
 from netCDF4 import Dataset
 import time as t
+from flask import Flask, Response, request
+import geojson as gj
+from getncattrs import __call__ as getncattrs
+app = Flask(__name__)
+app.debug = True
 
 # NetCDF4 compression level (1 seems to be optimal, in terms of effort and
 # result)
@@ -1119,61 +1124,60 @@ def get_stride(nc):
         stride = 1
     return stride
 
-if __name__ == "__main__":
-    from flask import Flask, Response, request
-    import geojson as gj
-    from getncattrs import __call__ as getncattrs
-    app = Flask(__name__)
-    app.debug = True
+@app.route("/")
+def index():
+    response = \
+'''
+Here is what you do!!
+'''
+    return response
 
-    @app.route("/")
-    def index():
-        response = \
-    '''
-    Here is what you do!!
-    '''
-        return response
+@app.route("/geojson-line/<path:dap>")
+def geojson_line(dap):
+    return geojson(dap)
 
-    @app.route("/geojson-line/<path:dap>")
-    def geojson_line(dap):
-        return geojson(dap)
-
-    @app.route("/geojson/<path:dap>")
-    def geojson(dap):
-        callback = request.args.get('callback', None)
-        response = "Problem"
-        with Dataset(dap) as nc:
-            stride = get_stride(nc)
-            if len(nc.variables["lon"].shape) == 2:
-                f = []
-                for i in xrange(nc.variables["lon"].shape[1]):
-                    lon = nc.variables["lon"][::stride,i].flatten().data.astype(np.float64)
-                    lat = nc.variables["lat"][::stride,i].flatten().data.astype(np.float64)
-                    coords = zip(lon[lon<1000], lat[lat<1000])
-                    #coords = zip(np.ones((100,)), np.ones((100,)))
-                    n = gj.LineString( coords )
-                    s = getncattrs(nc)
-                    if (not "time_coverage_start" in s) or (not "time_coverage_end" in s):
-                        s["time_coverage_start"], s["time_coverage_end"] = get_time_coverage(nc, stride)
-                    if "trajectory" in nc.variables:
-                        f.append( gj.Feature(id=nc.variables["trajectory"][i], geometry=n, properties=s) )
-                    else:
-                        f.append( gj.Feature(id=i, geometry=n, properties=s) )
-                f = gj.FeatureCollection(f)
-            else:
-                lon = nc.variables["lon"][::stride].flatten().data.astype(np.float64)
-                lat = nc.variables["lat"][::stride].flatten().data.astype(np.float64)
-                coords = zip(lon[lon<1000], lat[lat<1000])
+@app.route("/geojson/<path:dap>")
+def geojson(dap):
+    callback = request.args.get('callback', None)
+    response = "Problem"
+    with Dataset(dap) as nc:
+        stride = get_stride(nc)
+        if len(nc.variables["lon"].shape) == 2:
+            f = []
+            for i in xrange(nc.variables["lon"].shape[1]):
+                lon = nc.variables["lon"][::stride,i].flatten()
+		mask = lon.mask == False
+		lon = lon.data.astype(np.float64)
+                lat = nc.variables["lat"][::stride,i].flatten().data.astype(np.float64)
+                subbool = lon[mask]<1000
+		coords = zip(lon[mask][subbool], lat[mask][subbool])
+		#print coords
+		#coords[0], coords[1] = coords[0][coords[0]<-.01], coords[1][coords[1]>.01]
                 #coords = zip(np.ones((100,)), np.ones((100,)))
                 n = gj.LineString( coords )
                 s = getncattrs(nc)
                 if (not "time_coverage_start" in s) or (not "time_coverage_end" in s):
                     s["time_coverage_start"], s["time_coverage_end"] = get_time_coverage(nc, stride)
-                f = gj.Feature(id=s.get("id", None), geometry=n, properties=s)
-            response = gj.dumps(f)
-            if callback != None:
-                response = callback + "(" + response + ")"
-        return Response(response, mimetype='application/json')
+                if "trajectory" in nc.variables:
+                    f.append( gj.Feature(id=nc.variables["trajectory"][i], geometry=n, properties=s) )
+                else:
+                    f.append( gj.Feature(id=i, geometry=n, properties=s) )
+            f = gj.FeatureCollection(f)
+        else:
+            lon = nc.variables["lon"][::stride].flatten().data.astype(np.float64)
+            lat = nc.variables["lat"][::stride].flatten().data.astype(np.float64)
+            coords = zip(lon[lon<1000], lat[lat<1000])
+            #coords = zip(np.ones((100,)), np.ones((100,)))
+            n = gj.LineString( coords )
+            s = getncattrs(nc)
+            if (not "time_coverage_start" in s) or (not "time_coverage_end" in s):
+                s["time_coverage_start"], s["time_coverage_end"] = get_time_coverage(nc, stride)
+            f = gj.Feature(id=s.get("id", None), geometry=n, properties=s)
+        response = gj.dumps(f)
+        if callback != None:
+            response = callback + "(" + response + ")"
+    return Response(response, mimetype='application/json')
 
-    #app.run()
-    app.run(host='0.0.0.0')
+if __name__ == '__main__':
+    app.run()
+    #app.run('0.0.0.0')
